@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUXURY AI PRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --gold: #d4af37; 
+            --dark-bg: #0a0a0a; 
+            --glass: rgba(255, 255, 255, 0.07); 
+            --ai-bubble-bg: rgba(212, 175, 55, 0.08);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            background: var(--dark-bg); 
+            color: white; 
+            font-family: 'Cairo', sans-serif; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden;
+        }
+
+        /* شاشة الترحيب */
+        #splash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--dark-bg); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 9999;
+            transition: opacity 1s ease;
+        }
+        .splash-logo { font-size: 30px; font-weight: 700; color: var(--gold); letter-spacing: 10px; animation: glow 2s infinite; }
+        @keyframes glow { 0%, 100% { opacity: 0.5; text-shadow: 0 0 5px var(--gold); } 50% { opacity: 1; text-shadow: 0 0 20px var(--gold); } }
+
+        .header { padding: 20px; text-align: center; border-bottom: 1px solid var(--glass); background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); }
+        .logo { font-size: 22px; font-weight: 700; letter-spacing: 6px; color: var(--gold); }
+
+        #chat-window { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 25px; }
+        .bubble-container { display: flex; flex-direction: column; max-width: 85%; }
+        .user-container { align-self: flex-start; }
+        .ai-container { align-self: flex-end; }
+
+        .msg-tools { display: flex; gap: 12px; margin-bottom: 6px; justify-content: flex-end; }
+        .tool-btn { background: none; border: none; color: var(--gold); cursor: pointer; font-size: 13px; font-family: 'Cairo'; opacity: 0.6; }
+
+        .bubble { padding: 14px 18px; border-radius: 20px; line-height: 1.7; font-size: 15px; }
+        .user-bubble { background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-bottom-right-radius: 4px; }
+        .ai-bubble { background: var(--ai-bubble-bg); border: 1px solid var(--gold); color: #f0f0f0; border-bottom-left-radius: 4px; }
+
+        .input-container { padding: 15px 20px 30px 20px; background: #111; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--glass); }
+        .input-wrapper { flex: 1; position: relative; display: flex; align-items: center; }
+        input { width: 100%; background: var(--glass); border: 1px solid transparent; padding: 14px 50px 14px 20px; border-radius: 30px; color: white; font-family: 'Cairo'; outline: none; font-size: 15px; }
+        input:focus { border-color: var(--gold); }
+        
+        .action-btn { background: var(--gold); border: none; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3); }
+        .mic-btn { position: absolute; right: 5px; background: none; border: none; color: var(--gold); font-size: 20px; cursor: pointer; }
+        .recording { color: #ff4b4b; animation: pulse 1.2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .loader { display: none; text-align: center; color: var(--gold); font-size: 12px; padding: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="splash">
+        <div class="splash-logo">LUXURY AI</div>
+        <p style="color: var(--gold); font-size: 12px; margin-top: 10px;">نظام الذكاء الاصطناعي الخاص بك</p>
+    </div>
+
+    <div class="header"><div class="logo">LUXURY AI</div></div>
+
+    <div id="chat-window">
+        <div class="bubble-container ai-container">
+            <div class="msg-tools">
+                <button class="tool-btn" onclick="copyText(this)">نسخ 📋</button>
+                <button class="tool-btn" onclick="speakText(this)">استماع 🔊</button>
+            </div>
+            <div class="bubble ai-bubble">أهلاً بك يا سيدي. أنا مساعدك الشخصي المرتبط بمحرك Gemini، كيف يمكنني خدمتك الآن؟</div>
+        </div>
+    </div>
+
+    <div class="loader" id="aiLoader">جاري التفكير...</div>
+
+    <div class="input-container">
+        <div class="input-wrapper">
+            <input type="text" id="userInput" placeholder="تحدث أو اكتب أمرك...">
+            <button class="mic-btn" id="micBtn" onclick="toggleMic()">🎤</button>
+        </div>
+        <button class="action-btn" onclick="processRequest()">✦</button>
+    </div>
+
+    <script>
+        // تم وضع مفتاحك هنا بنجاح
+        const API_KEY = "AIzaSyCpjp9H6UHFT6XpP4LvI1AqVZ2pASa2XFw"; 
+
+        // إخفاء شاشة الترحيب بعد 3 ثواني
+        setTimeout(() => {
+            const splash = document.getElementById('splash');
+            splash.style.opacity = '0';
+            setTimeout(() => splash.style.display = 'none', 1000);
+        }, 3000);
+
+        let recognition;
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.lang = 'ar-SA';
+            recognition.onresult = (e) => {
+                document.getElementById('userInput').value = e.results[0][0].transcript;
+                toggleMic();
+                processRequest();
+            };
+        }
+
+        function toggleMic() {
+            const btn = document.getElementById('micBtn');
+            if (btn.classList.contains('recording')) {
+                recognition.stop();
+                btn.classList.remove('recording');
+            } else {
+                recognition.start();
+                btn.classList.add('recording');
+            }
+        }
+
+        async function processRequest() {
+            const input = document.getElementById('userInput');
+            const window_chat = document.getElementById('chat-window');
+            const loader = document.getElementById('aiLoader');
+            const query = input.value.trim();
+
+            if (!query) return;
+
+            window_chat.innerHTML += `<div class="bubble-container user-container"><div class="bubble user-bubble">${query}</div></div>`;
+            input.value = '';
+            loader.style.display = 'block';
+            window_chat.scrollTop = window_chat.scrollHeight;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: query }] }] })
+                });
+
+                const data = await response.json();
+                const aiResponse = data.candidates[0].content.parts[0].text;
+                loader.style.display = 'none';
+
+                window_chat.innerHTML += `
+                    <div class="bubble-container ai-container">
+                        <div class="msg-tools">
+                            <button class="tool-btn" onclick="copyText(this)">نسخ 📋</button>
+                            <button class="tool-btn" onclick="speakText(this)">استماع 🔊</button>
+                        </div>
+                        <div class="bubble ai-bubble">${aiResponse}</div>
+                    </div>`;
+            } catch (err) {
+                loader.style.display = 'none';
+                window_chat.innerHTML += `<div class="bubble ai-container ai-bubble" style="color:#ff6b6b;">خطأ في الاتصال. تأكد من الإنترنت.</div>`;
+            }
+            window_chat.scrollTop = window_chat.scrollHeight;
+        }
+
+        function copyText(btn) {
+            const txt = btn.parentElement.nextElementSibling.innerText;
+            navigator.clipboard.writeText(txt);
+            btn.innerText = "تم! ✓";
+            setTimeout(() => btn.innerText = "نسخ 📋", 2000);
+        }
+
+        function speakText(btn) {
+            const txt = btn.parentElement.nextElementSibling.innerText;
+            const uttr = new SpeechSynthesisUtterance(txt);
+            uttr.lang = 'ar-SA';
+            window.speechSynthesis.speak(uttr);
+        }
+    </script>
+</body>
+</html>
